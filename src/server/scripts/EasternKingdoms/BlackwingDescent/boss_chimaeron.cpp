@@ -21,18 +21,22 @@
 #include "Player.h"
 #include "Map.h"
 #include "InstanceScript.h"
+#pragma execution_character_set("UTF-8")
 
 enum Events
 {
-    EVENT_DOUBLE_ATTACK = 1,
-    EVENT_DOUBLE_ATTACK_REAL,
-    EVENT_CAUSTIC_SLIME,
-    EVENT_MASSACRE,
-    EVENT_BREAK_BILE_O_TRON,
-    EVENT_FEUD,
-    EVENT_SEC_MASSACRE,
-    EVENT_BREAK,
-    EVENT_REMOVE_FEUD,
+	EVENT_DOUBLE_ATTACK = 1,
+	EVENT_DOUBLE_ATTACK_REAL,
+	EVENT_CAUSTIC_SLIME,
+	EVENT_CAUSTIC_SLIME_BREAK,
+	EVENT_CAUSTIC_SLIME_BREAK_END,
+	EVENT_MASSACRE,
+	EVENT_BREAK_BILE_O_TRON,
+	EVENT_FEUD,
+	EVENT_SEC_MASSACRE,
+	EVENT_BREAK,
+	EVENT_REMOVE_FEUD,
+	EVENT_BERSERK,
 
     EVENT_AGGRO_NEF
 };
@@ -50,13 +54,16 @@ enum Spells
     SPELL_ASLEEP                        = 82706,
     SPELL_DOUBLE_ATTACK                 = 88826,
     SPELL_DOUBLE_ATTACK_REAL            = 82882,
-    SPELL_CAUSTIC_SLIME                 = 82935,
+    SPELL_CAUSTIC_SLIME                 = 82913,
+	//SPELL_CAUSTIC_SLIME                 = 82935,
     SPELL_MASSACRE                      = 82848,
     SPELL_FEUD                          = 88872,
     SPELL_BREAK                         = 82881,
 
     SPELL_MORTALITY                     = 82934,
     SPELL_MORTALITY_RAID_DEBUFF         = 82890,
+
+	SPELL_RANGE                        = 26662,       
 
     // Bile O Tron
     SPELL_FINKLES_MIXTURE               = 82705,
@@ -105,12 +112,15 @@ public:
     {
         boss_chimaeronAI(Creature* creature) : BossAI(creature, DATA_CHIMAERON)
         {
-            instance = creature->GetInstanceScript();
+			instance = creature->GetInstanceScript();
         }
 
         InstanceScript* instance;
         EventMap events;
+		bool bJustReset;
+		uint32 ResetTimer;
         uint8 phase;
+		uint32 masscrac;
 
         void Reset()
         {
@@ -122,10 +132,11 @@ public:
             me->RemoveAura(SPELL_MORTALITY);
             me->RemoveAura(SPELL_MORTALITY_RAID_DEBUFF);
             me->AddAura(SPELL_ASLEEP, me);
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+            //me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 
+			masscrac = 0;
             if (instance)
-                instance->SetBossState(DATA_CHIMAERON, NOT_STARTED);
+                instance->SetData(DATA_CHIMAERON, NOT_STARTED);
 
             if (Creature* finkle_einhorn = me->FindNearestCreature(NPC_FINKLE_EINHORN, 150.0f, true))
                 finkle_einhorn->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
@@ -137,41 +148,48 @@ public:
                 nefarianHelperheroic->DespawnOrUnsummon(100);
 
             _Reset();
+
+			instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BREAK);
         }
 
-        void EnterEvadeMode()
-        {
-            Reset();
+		void EnterEvadeMode()
+		{
+			events.Reset();
+			instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
+			instance->SetData(DATA_CHIMAERON, FAIL);
+			me->GetMotionMaster()->MoveTargetedHome();
+			//_DespawnAtEvade();
+			_Reset();
+			_EnterEvadeMode();
 
-            me->GetMotionMaster()->MoveTargetedHome();
-
-            if (instance)
-            {
-                instance->SetBossState(DATA_CHIMAERON, FAIL);
-                instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me); // Remove
-            }
-
-            _EnterEvadeMode();
-        }
+			ScriptedAI::EnterEvadeMode();
+		}
 
         void EnterCombat(Unit* /*who*/)
         {
             if (instance)
             {
-                instance->SetBossState(DATA_CHIMAERON, IN_PROGRESS);
+                instance->SetData(DATA_CHIMAERON, IN_PROGRESS);
                 instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, me); // Add
             }
 
+			if (Creature* finkle_einhorn = me->FindNearestCreature(NPC_FINKLE_EINHORN, 150.0f, true))
+				finkle_einhorn->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+
             if(me->GetMap()->IsHeroic())
             {
-                me->SummonCreature(NPC_NEFARIAN_HELPER_HEROIC,-90.764f, 2.345f, 72.481f, 2.5f ,TEMPSUMMON_MANUAL_DESPAWN);
-                events.ScheduleEvent(EVENT_AGGRO_NEF, 500);
+				me->SummonCreature(NPC_NEFARIAN_HELPER_HEROIC, -113.206f, 43.0277f, 80.1364f, 4.60826f, TEMPSUMMON_MANUAL_DESPAWN);
+                events.ScheduleEvent(EVENT_AGGRO_NEF, 1500);
             }
 
-            events.ScheduleEvent(EVENT_MASSACRE, urand(30000, 35000));
-            events.ScheduleEvent(EVENT_DOUBLE_ATTACK, 13000);
-            events.ScheduleEvent(EVENT_CAUSTIC_SLIME, urand(10000, 12000));
-            events.ScheduleEvent(EVENT_BREAK, urand(14000, 16000));
+			me->SetReactState(REACT_AGGRESSIVE);
+
+			masscrac = 0;
+
+            events.ScheduleEvent(EVENT_MASSACRE, 26000);
+            events.ScheduleEvent(EVENT_DOUBLE_ATTACK, 15000);
+            events.ScheduleEvent(EVENT_BREAK, 4500);
+			events.ScheduleEvent(EVENT_BERSERK, 450000);
 
             _EnterCombat();
         }
@@ -183,13 +201,32 @@ public:
 
         void UpdateAI(const uint32 diff)
         {
+
             if (!UpdateVictim() || me->HasUnitState(UNIT_STATE_CASTING))
                 return;
+
+			if (me->GetDistance(-106, -48, 76) <= 2.5)
+			{
+				me->AI()->EnterEvadeMode();
+				return;
+			}
+
+			if (me->HasAura(SPELL_DOUBLE_ATTACK))
+			{
+				if (Unit* target = me->GetVictim())
+					if (me->isAttackReady() && me->IsWithinMeleeRange(me->GetVictim()))
+					{
+						me->resetAttackTimer();
+						me->AttackerStateUpdate(me->GetVictim());
+						DoCast(target, SPELL_DOUBLE_ATTACK_REAL);
+						me->RemoveAura(SPELL_DOUBLE_ATTACK);
+					}
+			}
 
             if(me->GetHealthPct() < 21 && phase == 1)
             {
                 phase = 2;
-
+				me->RemoveAura(SPELL_FEUD);
                 DoCast(me, SPELL_MORTALITY);
                 DoCastAOE(SPELL_MORTALITY_RAID_DEBUFF);
 
@@ -199,12 +236,16 @@ public:
                     nefarianHelperheroic->CastSpell(nefarianHelperheroic, SPELL_MOCKING_SHADOWS, true);
                 }
 
-                if (Creature* finkle_einhorn = me->FindNearestCreature(NPC_FINKLE_EINHORN, 150.0f, true))
-                    DoScriptText(SAY_P2, finkle_einhorn);
+				if (Creature* finkle_einhorn = me->FindNearestCreature(NPC_FINKLE_EINHORN, 150.0f, true))
+					finkle_einhorn->AI()->Talk(4);
+
+				if (Creature* bilotron = me->FindNearestCreature(NPC_BILE_O_TRON, 150.0f, true))
+					bilotron->RemoveAura(SPELL_SYSTEM_FAILURE);
 
                 events.CancelEvent(EVENT_MASSACRE);
                 events.CancelEvent(EVENT_BREAK);
                 events.CancelEvent(EVENT_CAUSTIC_SLIME);
+				events.RescheduleEvent(EVENT_DOUBLE_ATTACK,5000);
             }
 
             events.Update(diff);
@@ -218,64 +259,110 @@ public:
                         if (Creature* nefarianHelperheroic = me->FindNearestCreature(NPC_NEFARIAN_HELPER_HEROIC, 150.0f, true))
                         nefarianHelperheroic->AI()->Talk(32);
                         return;
-                    
+						break;
                     case EVENT_MASSACRE:
+						me->InterruptNonMeleeSpells(false);
+						me->InterruptSpell(CURRENT_GENERIC_SPELL);
                         DoCastAOE(SPELL_MASSACRE);
+						masscrac = (masscrac + 1);
                     
-                        if (urand(1, 3) == 1)
-                            events.ScheduleEvent(EVENT_BREAK_BILE_O_TRON, 2000);
-                        else
-                            events.ScheduleEvent(EVENT_MASSACRE, 30000);
+						events.ScheduleEvent(EVENT_CAUSTIC_SLIME, 19000);
+
+						if (masscrac == 2 && urand(1, 2) == 1)
+						{ 
+							events.ScheduleEvent(EVENT_BREAK_BILE_O_TRON, 1000);
+						}
+						else if (masscrac == 3)
+							events.ScheduleEvent(EVENT_BREAK_BILE_O_TRON, 1000);
+						else
+							events.ScheduleEvent(EVENT_MASSACRE, 30000);
                     
                         break;
                     case EVENT_BREAK_BILE_O_TRON:
                         if (Creature* bilotron = me->FindNearestCreature(NPC_BILE_O_TRON, 150.0f, true))
                         {
-                            bilotron->AI()->DoAction(ACTION_BILE_O_TRON_SYSTEM_FAILURE);
-                    
-                            events.ScheduleEvent(EVENT_MASSACRE, 45000);
-                            events.RescheduleEvent(EVENT_CAUSTIC_SLIME, urand(60000, 64000));
+                            bilotron->AI()->DoAction(ACTION_BILE_O_TRON_SYSTEM_FAILURE);       
                             events.ScheduleEvent(EVENT_FEUD, 1000);
                         }
-                        break;
-                    case EVENT_FEUD:
-                        DoCast(me,SPELL_FEUD);
-                        if (Creature* nefarianHelperheroic = me->FindNearestCreature(NPC_NEFARIAN_HELPER_HEROIC, 150.0f, true))
-                            nefarianHelperheroic->AI()->Talk(34);
-                        events.ScheduleEvent(EVENT_REMOVE_FEUD, 3000);
-                        return;
+						events.CancelEvent(EVENT_CAUSTIC_SLIME);
+						events.CancelEvent(EVENT_MASSACRE);
 
+						if (!me->GetMap()->IsHeroic())
+						{ 
+							events.CancelEvent(EVENT_BREAK);
+							events.CancelEvent(EVENT_DOUBLE_ATTACK);
+						}
+                        break;
+					case EVENT_FEUD:
+						me->AddAura(SPELL_FEUD, me);
+						masscrac = 0; 
+     					me->SetReactState(REACT_PASSIVE);
+						me->AttackStop();
+						//DoCast(me,SPELL_FEUD);
+						events.ScheduleEvent(EVENT_MASSACRE, 30500);
+						events.ScheduleEvent(EVENT_CAUSTIC_SLIME_BREAK, 13000);
+						events.ScheduleEvent(EVENT_CAUSTIC_SLIME_BREAK_END, 28000);
+
+			
+
+						if (!me->GetMap()->IsHeroic())
+						{ 
+							events.ScheduleEvent(EVENT_DOUBLE_ATTACK, 45000);
+							events.ScheduleEvent(EVENT_BREAK, 40000);
+						}
+
+						if (me->GetMap()->IsHeroic())
+						{
+							if (Creature* nefarianHelperheroic = me->FindNearestCreature(NPC_NEFARIAN_HELPER_HEROIC, 150.0f, true))
+								nefarianHelperheroic->AI()->Talk(34);
+
+							events.ScheduleEvent(EVENT_REMOVE_FEUD, 3000);
+						}
+						break;
                     case EVENT_REMOVE_FEUD:
                         me->RemoveAurasDueToSpell(SPELL_FEUD);
-                        return;
-                        
+						break;
                     case EVENT_DOUBLE_ATTACK:
                         DoCast(me, SPELL_DOUBLE_ATTACK);
-                        events.ScheduleEvent(EVENT_DOUBLE_ATTACK, 15000);
-                        events.ScheduleEvent(EVENT_DOUBLE_ATTACK_REAL, 2000);
+                        events.ScheduleEvent(EVENT_DOUBLE_ATTACK, 16000);
+                        //events.ScheduleEvent(EVENT_DOUBLE_ATTACK_REAL, 1500);
                         break;
                     
-                    case EVENT_DOUBLE_ATTACK_REAL:
-                        DoCastVictim(SPELL_DOUBLE_ATTACK_REAL);
-                        me->RemoveAura(SPELL_DOUBLE_ATTACK);
-                        return;
-                    
+      //              case EVENT_DOUBLE_ATTACK_REAL:
+      //                  DoCastVictim(SPELL_DOUBLE_ATTACK_REAL);
+      //                  me->RemoveAura(SPELL_DOUBLE_ATTACK);
+      //                  return;
+						//break;
                     case EVENT_CAUSTIC_SLIME:
                     {
                         std::list<Unit*> targets;
-                        SelectTargetList(targets, RAID_MODE(2, 5), SELECT_TARGET_RANDOM, 100.0f, true);
+						SelectTargetList(targets, RAID_MODE(2, 5, 2, 5), SELECT_TARGET_RANDOM, 100.0f, true);
                             if (!targets.empty())
                                 for (std::list<Unit*>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
                                     DoCast(*itr, SPELL_CAUSTIC_SLIME);
                     }
-                        events.ScheduleEvent(EVENT_CAUSTIC_SLIME, urand(18000,22000));                
+                        events.ScheduleEvent(EVENT_CAUSTIC_SLIME, 19000);                
                         break;
-                    
+					case EVENT_CAUSTIC_SLIME_BREAK:
+					{
+						std::list<Unit*> targets;
+						SelectTargetList(targets, RAID_MODE(2, 5, 2, 5), SELECT_TARGET_RANDOM, 100.0f, true);
+						if (!targets.empty())
+							for (std::list<Unit*>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
+								DoCast(*itr, SPELL_CAUSTIC_SLIME);
+					}
+					events.ScheduleEvent(EVENT_CAUSTIC_SLIME_BREAK, 5000);
+					break;
+					case EVENT_CAUSTIC_SLIME_BREAK_END:
+						events.CancelEvent(EVENT_CAUSTIC_SLIME_BREAK);
+						break;
                     case EVENT_BREAK:
                         DoCastVictim(SPELL_BREAK);
-                        events.ScheduleEvent(EVENT_BREAK, 14000);
+                        events.ScheduleEvent(EVENT_BREAK, 15000);
                         break;
-                    
+					case EVENT_BERSERK:
+						DoCast(SPELL_RANGE);
+						break;
                     default:
                         break;
                 }
@@ -301,7 +388,7 @@ public:
 
             if (instance)
             {
-                instance->SetBossState(DATA_CHIMAERON, DONE);
+                instance->SetData(DATA_CHIMAERON, DONE);
                 instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me); // Remove
             }
 
@@ -315,8 +402,8 @@ public:
                 nefarianHelperheroic->DespawnOrUnsummon(9000);
             }
 
-            if (Creature* finkle_einhorn = me->FindNearestCreature(NPC_FINKLE_EINHORN, 150.0f, true))
-                DoScriptText(SAY_DEATH, finkle_einhorn);
+			if (Creature* finkle_einhorn = me->FindNearestCreature(NPC_FINKLE_EINHORN, 150.0f, true))
+				finkle_einhorn->AI()->Talk(5);
 
             _JustDied();
         }
@@ -330,7 +417,7 @@ public:
 
     bool OnGossipHello(Player* pPlayer, Creature* creature)
     {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "I suppose you'll be needing a key for this cage? Wait, don't tell me. The horrific gibbering monster behind me ate it, right?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+		pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "我想你会需要这个笼子的钥匙吧?慢着,先别说话.我后面那只鬼吼鬼叫的怪物把它吃了,对吧?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
         pPlayer->SEND_GOSSIP_MENU(66666,creature->GetGUID());
         return true;
     }
@@ -342,19 +429,19 @@ public:
         switch (uiAction)
         {
             case GOSSIP_ACTION_INFO_DEF+1:
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "You were trapped, as I recall. This situation seems oddly similar.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
+				player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "我记得,你是被困住了.情况实在太雷同了.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
                 player->SEND_GOSSIP_MENU(66667, creature->GetGUID());
                 break;
             case GOSSIP_ACTION_INFO_DEF+2:
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Gnomes in Lava Suits, for example.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
+				player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "譬如,穿着熔岩服的地精.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
                 player->SEND_GOSSIP_MENU(66668, creature->GetGUID());
                 break;
             case GOSSIP_ACTION_INFO_DEF+3:
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "No, I, uh, haven't seen it. You were saying?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+4);
+				player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "没有.我...呃...没看到.你刚刚是要说什么?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
                 player->SEND_GOSSIP_MENU(66669, creature->GetGUID());
                 break;
             case GOSSIP_ACTION_INFO_DEF+4:
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Restrictions? What restrictions?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+5);
+				player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "条件?什么条件?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 5);
                 player->SEND_GOSSIP_MENU(66670, creature->GetGUID());
                 break;
             case GOSSIP_ACTION_INFO_DEF+5:
@@ -405,7 +492,10 @@ public:
                 {
                     if (target->GetDistance(me) < 85.0f  && me->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
                     {
-                        DoScriptText(SAY_INTRO, me);
+						if (me->IsVisible())
+						{ 
+						Talk(urand(0, 2));
+						}
                         timer = 25000;
                     } else
                         timer = 1000;
@@ -420,7 +510,8 @@ public:
                 if (Creature* bilotron = me->FindNearestCreature(NPC_BILE_O_TRON, 150.0f, true))
                     bilotron->SetVisible(false);
 
-                DoScriptText(SAY_F_OUTRO, me);
+                //DoScriptText(SAY_F_OUTRO, me);
+				Talk(6);
                 me->GetMotionMaster()->MovePoint(1, -110.295f, 41.662f, 72.657f);
                 me->DespawnOrUnsummon(30000);
                 canFree = false;
@@ -475,7 +566,11 @@ public:
                 {
                     chimaeron->RemoveAurasDueToSpell(SPELL_ASLEEP);
                     if (Unit*target = chimaeron->FindNearestPlayer(50.0f, true))
+					{ 
                         chimaeron->AI()->AttackStart(target);
+						chimaeron->AI()->DoZoneInCombat(chimaeron);
+					}
+
                     chimaeron->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                     chimaeronWaken = true;
                 }
@@ -497,7 +592,6 @@ public:
             { // Reroute Power
                 me->RemoveAura(SPELL_SYSTEM_FAILURE);
                 me->GetMotionMaster()->MovePoint(1,BilePositions[waypoint]);
-
                 isFailureActive = false;
             }
             else uiSystemFailureTimer -= diff;
@@ -516,7 +610,7 @@ public:
                     waypoint = 8;
                     me->GetMotionMaster()->MovePoint(1, BilePositions[0]);
                     activated = true;
-                    wakeChimaeronTimer = 5000;
+                    wakeChimaeronTimer = 10000;
                     isFailureActive = false;
                     break;
                 
@@ -524,12 +618,12 @@ public:
                     if (!activated)
                         return;
                 
-                    if (Creature* finkle_einhorn = me->FindNearestCreature(NPC_FINKLE_EINHORN, 150.0f, true))
-                        DoScriptText(SAY_SYSTEM_FAILURE, finkle_einhorn);
+					if (Creature* finkle_einhorn = me->FindNearestCreature(NPC_FINKLE_EINHORN, 150.0f, true))
+						finkle_einhorn->AI()->Talk(3);
                 
                     me->RemoveAllAuras();
-                    DoCast(me,SPELL_REROUTE_POWER, true);
                     DoCast(me,SPELL_SYSTEM_FAILURE, true);
+					DoCast(me, SPELL_REROUTE_POWER, true);
                     isFailureActive = true;
                     uiSystemFailureTimer = 26000;
                     break;

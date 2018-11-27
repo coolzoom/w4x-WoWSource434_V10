@@ -32,6 +32,7 @@
 #include "Player.h"
 #include "Map.h"
 #include "InstanceScript.h"
+#pragma execution_character_set("UTF-8")
 
 enum Yells
 {
@@ -174,10 +175,10 @@ const int timerConcussiveStomp2 = urand(35000, 45000);
 // Spark of Rhyolith
 const int timerInfernalRage = 5000;
 
-#define EMOTE_SUPERHEATED       "Lord Rhyolith grows impatient and becomes Superheated!"
-#define EMOTE_VOLCANO           "Lord Rhyolith extinguishes a nearby volcano!"
-#define EMOTE_MAGMA             "Lord Rhyolith reaches towards the magma beyond his platform!"
-#define EMOTE_PHASE2            "Lord Rhyolith loses his Obsidian Armor and is now exposed!"
+#define EMOTE_SUPERHEATED       "雷奥利斯领主失去了耐性,变得过热!"
+#define EMOTE_VOLCANO           "雷奥利斯领主熄灭了附近的一座火山!"
+#define EMOTE_MAGMA             "雷奥利斯领主朝向平台远处的岩浆!"
+#define EMOTE_PHASE2            "雷奥利斯领主因失去了他的黑曜石护甲而暴露出来!"
 
 class boss_lord_rhyolith: public CreatureScript
 {

@@ -1208,7 +1208,7 @@ enum TrinityStrings
     // Use for custom patches 11000-11999
     LANG_AUTO_BROADCAST                     = 11000,
     LANG_INVALID_REALMID                    = 11001,
-
+	LANG_COMMAND_MODIFY_JF = 20001,
     // Show Kick in world
 	LANG_COMMAND_KICKMESSAGE_WORLD = 11002,
 	

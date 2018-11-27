@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *

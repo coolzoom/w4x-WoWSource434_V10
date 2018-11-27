@@ -808,6 +808,7 @@ int WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     std::string account;
     SHA1Hash sha;
     BigNumber k;
+	uint32 jf;
     WorldPacket addonsData;
 
     recvPacket.read_skip<uint32>();
@@ -911,6 +912,7 @@ int WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     }
 
     locale = LocaleConstant (fields[8].GetUInt8());
+	jf = fields[9].GetUInt32();
     if (locale >= TOTAL_LOCALES)
         locale = LOCALE_enUS;
 

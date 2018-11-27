@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
@@ -138,8 +138,8 @@ int Master::Run()
 	sLog->outInfo(LOG_FILTER_WORLDSERVER, "		 ██╔════╝██╔═══██╗██╔══██╗██╔════╝");
 	sLog->outInfo(LOG_FILTER_WORLDSERVER, "		 ██║     ██║   ██║██████╔╝█████╗");  
 	sLog->outInfo(LOG_FILTER_WORLDSERVER, "		 ██║     ██║   ██║██╔══██╗██╔══╝");  
-	sLog->outInfo(LOG_FILTER_WORLDSERVER, "		   ╚██████╗╚██████╔╝██║  ██║███████╗");
-	sLog->outInfo(LOG_FILTER_WORLDSERVER, "  	            ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝");
+	sLog->outInfo(LOG_FILTER_WORLDSERVER, "	     ╚██████╗╚██████╔╝██║  ██║███████╗");
+	sLog->outInfo(LOG_FILTER_WORLDSERVER, "       ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝");
 	sLog->outInfo(LOG_FILTER_WORLDSERVER, "  Noffearr Death ProjecT 2015(c) Open-Sourced Game Emulation ");
 	sLog->outInfo(LOG_FILTER_WORLDSERVER, "            http://www.noffearrdeathproject.net \n");
 

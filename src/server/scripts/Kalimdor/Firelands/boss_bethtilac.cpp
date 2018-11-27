@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2014 WoW Source  <http://wowsource.info/>
  *
  * Dont Share The SourceCode

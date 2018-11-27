@@ -71,6 +71,7 @@ public:
             { "phase",          SEC_ADMINISTRATOR,  false, &HandleModifyPhaseCommand,         "", NULL },
             { "gender",         SEC_GAMEMASTER,     false, &HandleModifyGenderCommand,        "", NULL },
             { "currency",       SEC_GAMEMASTER,     false, &HandleModifyCurrencyCommand,      "", NULL },
+			{ "jf", SEC_GAMEMASTER, false, &HandleModifyJfCommand, "", NULL },
             { "speed",          SEC_MODERATOR,      false, NULL,           "", modifyspeedCommandTable },
             { NULL,             0,                  false, NULL,                                           "", NULL }
         };
@@ -1449,6 +1450,37 @@ public:
         target->ModifyCurrency(currencyId, amount, true, true);
 
         return true;
+		}
+
+	static bool HandleModifyJfCommand(ChatHandler* handler, const char* args)
+	{
+		if (!*args)
+			return false;
+		Player* target = handler->getSelectedPlayer();
+		if (!target)
+		{
+			handler->SendSysMessage(LANG_PLAYER_NOT_FOUND);
+			return true;
+		}
+
+		uint32 guid = 0;
+		if (target)
+		{
+			guid = target->GetSession()->GetAccountId();
+		}
+
+		uint32 amount = (uint32)atoi(args);
+		if (amount < 0 || amount > 999999)
+		{
+			handler->SendSysMessage(LANG_BAD_VALUE);
+			return true;
+		}
+
+		LoginDatabase.PExecute("UPDATE `account` SET `jf` = '%u' WHERE `id` = '%u'", amount + handler->getSelectedPlayer()->Getjifen(), guid);
+
+		handler->PSendSysMessage(LANG_COMMAND_MODIFY_JF, target->GetName(), amount);
+
+		return true;
     }
 };
 

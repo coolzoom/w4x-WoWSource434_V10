@@ -35,6 +35,7 @@ EndScriptData
 #include "ObjectMgr.h"
 #include "World.h"
 #include "GroupMgr.h"
+#include "Config.h"
 
 namespace lfg
 {
@@ -354,8 +355,8 @@ LfgCompatibility LFGQueue::CheckCompatibility(LfgGuidList check)
     }
 
     // Check if more than one LFG group and number of players joining
-    uint8 numPlayers = 0;
-    uint8 numLfgGroups = 0;
+	uint8 numPlayers = 0;
+	uint8 numLfgGroups = 0;
     for (LfgGuidList::const_iterator it = check.begin(); it != check.end() && numLfgGroups < 2 && numPlayers <= MAXGROUPSIZE; ++it)
     {
         uint64 guid = (*it);

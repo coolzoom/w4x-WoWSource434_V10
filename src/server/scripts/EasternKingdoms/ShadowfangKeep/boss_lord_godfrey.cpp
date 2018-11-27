@@ -77,8 +77,10 @@ class boss_lord_godfrey : public CreatureScript
         }
 
         void EnterCombat(Unit * who)
-        {
-            _EnterCombat();
+		{
+			if (Player* p = me->FindNearestPlayer(10.0f, true)){
+
+				_EnterCombat();
 
             if (instance->GetData(TEAM_IN_INSTANCE) == TEAM_HORDE)
                 Talk(SAY_AGGRO_H);
@@ -87,10 +89,13 @@ class boss_lord_godfrey : public CreatureScript
 
             instance->HandleGameObject(instance->GetData64(GO_LORD_GODFREY_DOOR), false);
 
-            events.ScheduleEvent(EVENT_SUMMON_BLOODTHIRSTY_GHOULS, 10000);
-            events.ScheduleEvent(EVENT_MORTAL_WOUND, 25000);
-            events.ScheduleEvent(EVENT_PISTOL_BARRAGE, 55000);
-            events.ScheduleEvent(EVENT_CURSED_BULLETS, 15000);
+				events.ScheduleEvent(EVENT_SUMMON_BLOODTHIRSTY_GHOULS, 10000);
+				events.ScheduleEvent(EVENT_MORTAL_WOUND, 25000);
+				events.ScheduleEvent(EVENT_PISTOL_BARRAGE, 55000);
+				events.ScheduleEvent(EVENT_CURSED_BULLETS, 15000);
+			}
+			else
+				EnterEvadeMode();
         }
 
         void JustDied(Unit * /*killer*/)

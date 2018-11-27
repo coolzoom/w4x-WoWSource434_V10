@@ -55,6 +55,8 @@ class Transport : public GameObject, public TransportBase
         /// This method transforms supplied global coordinates into local offsets
         void CalculatePassengerOffset(float& x, float& y, float& z, float& o);
 
+		//This enable movement
+		void EnableMovement(bool enabled);
         void BuildStartMovePacket(Map const* targetMap);
         void BuildStopMovePacket(Map const* targetMap);
         uint32 GetScriptId() const { return ScriptId; }
@@ -86,6 +88,8 @@ class Transport : public GameObject, public TransportBase
         uint32 m_timer;
 
         PlayerSet m_passengers;
+		bool _isMoving;
+		bool _pendingStop;
 
         uint32 currenttguid;
         uint32 m_period;

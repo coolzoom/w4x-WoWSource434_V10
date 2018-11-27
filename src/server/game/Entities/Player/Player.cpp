@@ -14747,8 +14747,10 @@ void Player::PrepareGossipMenu(WorldObject* source, uint32 menuId /*= 0*/, bool 
                     break;
                 case GOSSIP_OPTION_VENDOR:
                 {
-                    VendorItemData const* vendorItems = creature->GetVendorItems();
-                    if (!vendorItems || vendorItems->Empty())
+                    //VendorItemData const* vendorItems = creature->GetVendorItems();
+                    //if (!vendorItems || vendorItems->Empty())
+					VendorItemData const* vendorItems = itr->second.ActionMenuId ? nullptr : creature->GetVendorItems();
+					if (!itr->second.ActionMenuId && (!vendorItems || vendorItems->Empty()))
                     {
                         sLog->outError(LOG_FILTER_SQL, "Creature (GUID: %u, Entry: %u) have UNIT_NPC_FLAG_VENDOR but have empty trading item list.", creature->GetGUIDLow(), creature->GetEntry());
                         canTalk = false;
@@ -14939,7 +14941,8 @@ void Player::OnGossipSelect(WorldObject* source, uint32 gossipListId, uint32 men
             break;
         case GOSSIP_OPTION_VENDOR:
         case GOSSIP_OPTION_ARMORER:
-            GetSession()->SendListInventory(guid);
+            //GetSession()->SendListInventory(guid);
+			GetSession()->SendListInventory(guid, menuItemData->GossipActionMenuId);
             break;
         case GOSSIP_OPTION_STABLEPET:
             GetSession()->SendStablePet(guid);
@@ -15709,7 +15712,14 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
 
     for (uint8 i = 0; i < QUEST_REWARD_CURRENCY_COUNT; ++i)
         if (quest->RewardCurrencyId[i])
-            ModifyCurrency(quest->RewardCurrencyId[i], quest->RewardCurrencyCount[i]);
+		{
+			if (quest->RewardCurrencyId[i] != 395 && quest->RewardCurrencyId[i] != 396)
+				ModifyCurrency(quest->RewardCurrencyId[i], quest->RewardCurrencyCount[i]);
+			if (quest->RewardCurrencyId[i] == 395)
+				ModifyCurrency(quest->RewardCurrencyId[i], quest->RewardCurrencyCount[i] * 100);
+			if (quest->RewardCurrencyId[i] == 396)
+				ModifyCurrency(quest->RewardCurrencyId[i], quest->RewardCurrencyCount[i] * 100);
+		}
 
     if (uint32 skill = quest->GetRewardSkillId())
         UpdateSkill(skill, quest->GetRewardSkillPoints());
@@ -22292,8 +22302,9 @@ bool Player::BuyItemFromVendorSlot(uint64 vendorguid, uint32 vendorslot, uint32 
         return false;
     }
 
-    VendorItemData const* vItems = creature->GetVendorItems();
-    if (!vItems || vItems->Empty())
+    //VendorItemData const* vItems = creature->GetVendorItems();
+	VendorItemData const* vItems = GetSession()->GetCurrentVendor() ? sObjectMgr->GetNpcVendorItemList(GetSession()->GetCurrentVendor()) : creature->GetVendorItems();
+	if (!vItems || vItems->Empty())
     {
         SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, item, 0);
         return false;
@@ -27377,6 +27388,27 @@ void Player::SendMovementSetCollisionHeight(float height)
     info.height = height;
 
     Movement::PacketSender(this, SMSG_MOVE_SET_COLLISION_HEIGHT, SMSG_MOVE_SET_COLLISION_HEIGHT, &info, false, false).Send();
+}
+
+uint32 Player::Getjifen() const
+{
+	QueryResult result = LoginDatabase.PQuery("SELECT `jf` FROM `account` WHERE `id` = '%u'", GetSession()->GetAccountId());
+	if (result)
+	{
+		uint32 a = result->Fetch()[0].GetUInt32();;
+		return a;
+	}
+	return 0;
+}
+
+void Player::Modifyjifen(int32 d)
+{
+	int32 jfuser = Getjifen();
+	int32 Newjifen = jfuser + d;
+	if (Newjifen < 0)
+		LoginDatabase.PExecute("UPDATE `account` SET `jf` = '0' WHERE `id` = '%u'", GetSession()->GetAccountId());
+	else
+		LoginDatabase.PExecute("UPDATE `account` SET `jf` = '%u' WHERE `id` = '%u'", Newjifen, GetSession()->GetAccountId());
 }
 
 Guild* Player::GetGuild()

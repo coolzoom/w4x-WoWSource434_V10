@@ -776,7 +776,7 @@ void AddSC_outdoorpvp_gh();
 
 // player
 void AddSC_chat_log();
-
+void AddSC_vendor_npc();
 #endif
 
 void AddScripts()
@@ -888,6 +888,7 @@ void AddWorldScripts()
     AddSC_boss_mobus();
     AddSC_boss_julak_doom();
     AddSC_chat_log();
+	AddSC_vendor_npc();
 #endif
 }
 
@@ -1596,11 +1597,26 @@ void AddBattlegroundScripts()
 
 #ifdef SCRIPTS
 /* This is where custom scripts' loading functions should be declared. */
+//void AddSC_vendor_npc(); 
+void AddSC_announce_login();//上线提醒
+void AddSC_Reset();//决斗重置脚本
+void AddSC_Level_item();//满级卷轴
+void AddSC_World_Chat();//世界喊话脚本
+void AddSC_tele_script_mortal();//传送员脚本
+//void AddSC_NoFarming(); //单IP对刷
 #endif
 
 void AddCustomScripts()
 {
 #ifdef SCRIPTS
-    /* This is where custom scripts should be added. */
+	/* This is where custom scripts should be added. */
+	//AddSC_vendor_npc();
+	AddSC_announce_login();
+	AddSC_Reset();
+	AddSC_Level_item();
+	AddSC_World_Chat();
+	AddSC_tele_script_mortal();
+	//AddSC_NoFarming();
+
 #endif
 }

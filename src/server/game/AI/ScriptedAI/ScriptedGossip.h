@@ -7,13 +7,13 @@
 
 #ifndef SC_GOSSIP_H
 #define SC_GOSSIP_H
-
+#pragma execution_character_set("UTF-8")
 #include "GossipDef.h"
 #include "QuestDef.h"
 
 // Gossip Item Text
-#define GOSSIP_TEXT_BROWSE_GOODS        "I'd like to browse your goods."
-#define GOSSIP_TEXT_TRAIN               "Train me!"
+#define GOSSIP_TEXT_BROWSE_GOODS        "我想看一下你的商品."
+#define GOSSIP_TEXT_TRAIN               "训练我!"
 
 enum eTradeskill
 {
